@@ -1,25 +1,134 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: 'Reproducible research: Peer assessment 1'
+author: "Adel Heenan"
+date: "18 January 2015"
+output: html_document
 ---
 
+# What is mean total number of steps taken per day?
+```{r, echo=TRUE}
 
-## Loading and preprocessing the data
+library(plyr)
+library(ggplot2)
+library(lattice)
+
+dt<-read.csv("activity.csv")
+
+# Calculate the mean number of steps each day
+mm <- ddply(dt, "date", summarise, m.steps = mean(steps))
+
+# plot the histogram
+hist(mm$m.steps)
+
+```
+## mean number of steps per day
+```{r, echo=TRUE}
+a<-data.frame(tapply(mm$m.steps, mm$date, mean))
+a$Date<-row.names(a)
+names(a)<-c("Mean_no.steps", "Date")
+a
+```
+
+## median number of steps per day
+```{r, echo=TRUE}
+b<-data.frame(tapply(mm$m.steps, mm$date, median))
+b$Date<-row.names(b)
+names(b)<-c("Median_no.steps", "Date")
+b
+```
+
+# What is the average daily activity pattern?
+
+```{r, echo=TRUE}
+dt$interval<-as.factor(dt$interval)
+d<-aggregate(dt$steps~dt$interval, FUN=mean, na.action=na.omit)
+names(d)<-c("Time", "Mean_number_of_steps")
+par(mar=c(4,4,4,4))
+plot(d$Time, d$Mean_number_of_steps, type="l", xlab="Time of day", ylab="Mean number of steps")
+
+#Which 5-minute interval, on average across all the days in the dataset,
+#contains the maximum number of steps?
+
+e<-d[which(d$Mean_number_of_steps == max(d$Mean_number_of_steps)),]
+```
+
+The maximum number of steps per time interval is at `r e[1]`.
+
+# Imputing missing values
+
+```{r, echo=TRUE}
+dt$imputed_steps<-dt$steps
+g<-which(is.na(dt$imputed_steps))
+```
+Therer are `r length(g)` missing values in the original dataset.
+```{r, echo=TRUE}
+
+## i ran out of time so settled on replacing missing values with 0
+## i wanted to run this for each interval like so: but couldn't figure it out
+## thenas<-dt[g,]
+## thenas[the_nas$interval %in% c("0"),]$steps<-d[d$Time=="0", "Mean_number_of_steps]
+## with a for loop
+
+#Create a new dataset that is equal to the original dataset
+#but with the missing data filled in.
+dt[g, ]$imputed_steps<-0
+str(dt)
+```
 
 
+## Histogram of the total number of steps taken
 
-## What is mean total number of steps taken per day?
+```{r, echo=TRUE}
+# Calculate the mean number of steps each day
+xx <- ddply(dt, "date", summarise, m.steps = sum(imputed_steps))
+
+# plot the histogram
+hist(xx$m.steps)
+
+# mean number of steps per day
+aa<-data.frame(tapply(xx$m.steps, xx$date, mean))
+aa$Date<-row.names(aa)
+names(aa)<-c("Mean_no.steps", "Date")
+
+# median number of steps per day
+bb<-data.frame(tapply(xx$m.steps, mm$date, median))
+bb$Date<-row.names(bb)
+names(bb)<-c("Median_no.steps", "Date")
+
+setequal(a$Mean_no.steps, aa$Mean_no.steps)
+setequal(b$Mean_no.steps, bb$Mean_no.steps)
+
+```
+The mean values calculated from the original data with missing values and the imputed data where missing values are set to zero do differ. This is because the nas are being treated as true zeros and affecting the mean. The median does not differ.
+
+##Are there differences in activity patterns between weekdays and weekends?
+
+```{r, echo=TRUE}
+dt$Date<-dt$date
+dt$date<-as.Date(dt$Date)
+dt$DOTW<-weekdays(dt$date)
+dt$WW<-as.factor(dt$DOTW)
+levels(dt$WW)<-c(levels(dt$WW), "Weekday", "Weekend")
+
+dt[dt$WW %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"),]$WW<-"Weekday"
+dt[dt$WW %in% c("Saturday", "Sunday"),]$WW<-"Weekend"
+dt<-droplevels(dt)
+
+tmp<-dt
+str(dt)
+dt$interval<-as.factor(dt$interval)
+d<-aggregate(dt$imputed_steps~dt$interval+dt$WW, FUN=mean)
+names(d)<-c("Interval", "WW", "Mean_steps")
+par(mar=c(4,4,4,4))
+d$Interval<-as.numeric(d$Interval)
 
 
+xyplot(Mean_steps ~ Interval| WW,
+       data = d,
+       type = "l",
+       xlab = "Interval",
+       ylab = "Number of steps",
+       layout=c(1,2))
 
-## What is the average daily activity pattern?
+```
 
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
